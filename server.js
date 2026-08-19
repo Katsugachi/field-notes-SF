@@ -1,4 +1,7 @@
-// Field Notes — local server (zero dependencies, Node 18+)
+// Field Notes — original local server (zero dependencies, Node 18+)
+//
+// The app is now a single file: open index.html. This server is kept as the
+// earlier Node edition and as a convenient static host (`node server.js`).
 //
 //   node server.js
 //   open http://localhost:4317

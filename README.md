@@ -1,8 +1,10 @@
 # field notes
 
-a local reference notebook for designers. drop travel photos in, and Claude names
-each one, samples its palette, and tags the materials — then files it into the trip
-it came from. everything lives on your own disk. no account, no cloud, no upload.
+a local reference notebook for designers. drop travel photos in, and each one
+gets a name, a palette, and material tags — then files itself into the trip it
+came from. everything lives in your browser. no account, no cloud, no install.
+
+the whole app is **one HTML file**.
 
 <p align="center">
   <img src="docs/screenshot-grid.png" alt="the library grid" width="100%">
@@ -19,8 +21,8 @@ it came from. everything lives on your own disk. no account, no cloud, no upload
 
 ## what it does
 
-- **drop a photo, get a card.** Claude looks at each image and writes a short
-  name, a one-line description, an accurate hex palette, and the materials it sees.
+- **drop a photo, get a card.** each image gets a short name, a one-line
+  description, an accurate hex palette, and the materials it shows.
 - **sorts itself by trip.** location + date are read straight from the photo's
   EXIF (GPS → city), so shots file into "Antwerp", "Tokyo", etc. automatically.
 - **prints to a zine.** select a few cards and fold them into a single-sheet
@@ -28,15 +30,19 @@ it came from. everything lives on your own disk. no account, no cloud, no upload
 
 ## how it works
 
-- **tagging** runs through your local **`claude` CLI** (Claude Code) using your
-  existing login — there's no API key to manage. each image is analysed in
-  headless mode and comes back as a small JSON record (name, palette, materials).
-- **image work** is all server-side via macOS's built-in **`sips`** (HEIC→JPEG,
-  downscaling) and **`mdls`** (EXIF). nothing flaky in the browser, no image libs.
-- **persistence** is just files: full-res originals in `./library/`, metadata in a
-  human-readable `./library.json` you can back up, commit, or hand-edit.
-- **zero dependencies.** the whole thing is one `server.js` (Node's `http`) and one
-  `index.html` (vanilla JS). no framework, no build step, no `node_modules`.
+this is a single-file port of the original local Node app. the interface is
+unchanged; the server, macOS tools, and on-disk library are now in the browser.
+
+- **one file.** `index.html` is the entire product — fonts, demo photos, UI, and
+  logic. open it. there is nothing to install.
+- **tagging.** if you paste an Anthropic API key in **settings**, each new photo
+  is sent to Claude from your browser (same JSON record as before: name, palette,
+  materials). without a key, the app still works: it samples a four-colour
+  palette locally, names the file, and files the trip from EXIF.
+- **image work** is all in-page: canvas for downscaling / HEIC (when the browser
+  can decode it), and a JPEG EXIF reader for GPS + capture date.
+- **persistence** is IndexedDB on this device. export / import a JSON backup from
+  settings whenever you want a file you can copy or commit.
 
 ## why i built it
 
@@ -48,86 +54,74 @@ like someone else's feed; a folder of photos felt like a junk drawer.
 
 so i built the tool i actually wanted: drop a photo in and it gets a name, a palette,
 and the materials it's made of, then files itself by the trip it came from — no tagging,
-no accounts, nothing leaving my laptop. it started in antwerp during design week, where
-i was photographing more than i could keep track of, and grew from there. this is that
-tool, opened up so anyone can run their own.
+no accounts. it started in antwerp during design week, where i was photographing more
+than i could keep track of, and grew from there.
+
+this edition takes that same notebook and folds the server into the page, so it
+runs anywhere a browser does.
 
 ## setup
 
 > **before you start, you need:**
-> 1. **macOS** — it uses the built-in `sips` + `mdls` tools (no Windows/Linux yet)
-> 2. **Node 18 or newer** — check with `node -v` ([install here](https://nodejs.org))
-> 3. **a way to analyse images** — *either* of:
->    - **[Claude Code](https://claude.com/claude-code)** installed and logged in (easiest, no key), **or**
->    - an **Anthropic API key** ([get one](https://console.anthropic.com))
->
-> the app still opens and runs without #3 — you just can't name/tag photos until
-> one of those is in place.
+> 1. **a browser** — any current Chrome, Firefox, Safari, or Edge
+> 2. *(optional)* an **Anthropic API key** if you want Claude to name and tag
+>    photos ([get one](https://console.anthropic.com)). without it, drops still
+>    file by trip and get a local palette.
 
 ```bash
-# 1. clone
-git clone https://github.com/Laurencemdonald/field-notes.git
-cd field-notes
-
-# 2. dependencies — there are none to install (zero-dependency Node app)
-
-# 3. (optional) only if you're using an API key instead of Claude Code:
-cp .env.example .env      # then open .env and paste your key
-
-# 4. run
-node server.js
+# open the file
+open index.html          # macOS
+xdg-open index.html      # linux
+start index.html         # windows
 ```
 
-then open **http://localhost:4317** and drag photos onto the page. a fresh clone
-starts with a few demo reference photos so the grid isn't empty.
-
-**two ways to authenticate the image analysis:**
-
-1. **the `claude` CLI (recommended, no key).** install Claude Code, log in once,
-   and Field Notes shells out to it. nothing to configure.
-
-2. **an Anthropic API key (fallback).** if you'd rather not use the CLI, get a key
-   at **[console.anthropic.com](https://console.anthropic.com)** (→ *API keys* →
-   *Create key*), then put it in your `.env`:
-   ```
-   ANTHROPIC_API_KEY=sk-ant-...
-   ```
-   the server uses the key only when the CLI isn't available.
-
-### other options
+or serve the folder (useful if a `file://` page blocks the anthropic call):
 
 ```bash
-PORT=5000 node server.js                       # run on a different port
-FIELD_NOTES_MODEL=claude-sonnet-4-6 node ...   # pin a specific model
-CLAUDE_BIN=/full/path/to/claude node ...       # if `claude` isn't auto-found
+python3 -m http.server 4317
+# then open http://localhost:4317
 ```
+
+a fresh open starts with a few demo reference photos so the grid isn't empty.
+
+**image analysis:**
+
+1. **local (default).** palette is sampled from the pixels; the trip comes from
+   EXIF. nothing leaves the machine.
+2. **claude (optional).** open **settings**, paste `ANTHROPIC_API_KEY`, and new
+   drops (or **look again** on a card) use the same vision prompt as the original
+   app. the key is stored only in this browser.
 
 ## tech stack
 
-- **Node.js** (zero dependencies — just the standard library)
-- **vanilla HTML / CSS / JS** — no framework, no build step
-- **Claude** for image analysis, via the **Claude Code CLI** (or the Anthropic API as a fallback)
-- **macOS `sips` + `mdls`** for image conversion, downscaling, and EXIF
-- self-hosted **EB Garamond + Inter** webfonts (works fully offline)
+- one self-contained HTML file — no framework, no build step to *run*
+- vanilla JS + CSS (EB Garamond + Inter, embedded)
+- IndexedDB for the library, canvas for image work, JPEG EXIF for trips
+- optional Claude analysis via the Anthropic API (browser CORS header)
+- printable zines (pages, PocketMod mini-zine, saddle-stitch booklet)
 
 ## project layout
 
 ```
 field-notes/
-  server.js          zero-dependency Node server; calls the `claude` CLI
-  index.html         the whole interface (vanilla JS)
-  samples/           demo photos + metadata a fresh clone seeds from
-  fonts/  icons/     self-hosted webfonts and app icons
-  library/           your full-res originals      (git-ignored, auto-created)
-  library.json       your collection's metadata   (git-ignored, auto-created)
-  .cache/            scratch for downscaled copies (git-ignored, auto-cleared)
+  index.html              the whole app — open this
+  field-notes.src.html    source before fonts/photos are inlined
+  build-single-file.py    regenerates index.html
+  samples/                demo photos the first run seeds from
+  fonts/                  EB Garamond + Inter (embedded into the html)
+  server.js               original Node edition (no longer required)
+```
+
+rebuild the single file after editing the source:
+
+```bash
+python3 build-single-file.py
 ```
 
 ## what i'd do next
 
 a running list, roughly in order of how much i want them:
 
-- make it work beyond macOS (it currently leans on the built-in `sips`/`mdls`)
 - group by material or colour across trips, not just by location
 - a "palette from a whole trip" view — the dominant colours of antwerp vs tokyo
 - export a trip as a single shareable page or PDF, not only a printed zine
